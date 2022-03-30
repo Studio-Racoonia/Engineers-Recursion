@@ -1,0 +1,7 @@
+function Replace
+{
+    if.player item.wooden_axe isHolding
+    {
+        gameAction.setBlock value.targetBlockLocation value.offHandItem
+    }
+}

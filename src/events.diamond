@@ -1,0 +1,49 @@
+event Join
+{
+    set value.uuid of save.uuid_player to value.name
+
+    if value.playerCount = 1
+    {
+        call Setup_Game
+    }
+
+    call Setup_Player
+}
+
+event Command
+{
+    set local.instruction get 1 in value.eventCommandArguments
+    set local.length length value.eventCommandArguments
+
+    if local.length > 1
+    {
+        set local.args trim value.eventCommandArguments 2
+    }
+    else
+    {
+        set local.args list
+    }
+
+    set local.function_id get local.instruction of value.player_commands
+
+    if local.function_id = 0
+    {
+        if game.admins contains value.uuid
+        {
+            set local.function_id get local.instruction of game.admin_commands
+            if local.function_id != 0
+            {
+                call Run
+            }
+        }
+    }
+    else
+    {
+        call Run
+    }
+}
+
+event Right_Click
+{
+    call Replace
+}

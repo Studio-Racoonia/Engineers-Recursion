@@ -1,0 +1,199 @@
+function SG_Command
+{
+    set local.commands list "bug" "suggest"
+    set local.functions list "command_bug" "command_suggest"
+    set game.player_commands dictionary local.commands local.functions
+    set local.commands list "generate" "spectator" "creative" "adventure" "fix" "ban" "pardon"
+    set local.functions list "generate" "gm_spectator" "gm_creative" "gm_adventure" "command_fix" "command_ban" "command_pardon"
+    set game.admin_commands dictionary local.commands local.functions
+}
+
+function Commmand_Bug
+{
+    set local.text text local.args
+
+    if local.text = 0
+    {
+        playerAction.sendMessage "&cPlease enter a description of the bug as command argument!"
+        playerAction.playSound sound.strider_hurt
+        control.return
+    }
+
+    set local.text text value.name "&r (" value.uuid ")" "&r - \"" local.text "\"" merging=no_spaces
+    gameAction.discordWebhook "webhookKey" local.text
+    playerAction.sendMessage "&aBug report send!"
+    playerAction.playSound sound.bell
+}
+
+function Command_Suggest
+{
+    set local.text text local.args
+
+    if local.text = 0
+    {
+        playerAction.sendMessage "&cPlease enter a description of your suggestion as command argument!"
+        playerAction.playSound sound.strider_hurt
+        control.return
+    }
+
+    set local.text text value.name "&r - \"" local.text "\"" merging=no_spaces
+    gameAction.discordWebhook "webhookKey" local.text
+    playerAction.sendMessage "&aSuggestion send!"
+    playerAction.playSound sound.bell
+}
+
+function Command_Fix
+{
+    set local.uuid get 1 in local.args
+
+    if local.uuid = 0
+    {
+        playerAction.sendMessage "&cThis command requires a uuid and a description of the fix as arguments!"
+        playerAction.playSound sound.strider_hurt
+        control.return
+    }
+
+    set local.length length local.args
+
+    if local.length = 1
+    {
+        playerAction.sendMessage "&cThis command requires a uuid and a description of the fix as arguments!"
+        playerAction.playSound sound.strider_hurt
+        control.return
+    }
+
+    set local.args trim 2
+    set local.text text local.args
+    set local.reward_list get local.uuid of save.fix_rewards
+
+    if local.reward_list = 0
+    {
+        set local.reward_list list local.text
+    }
+    else
+    {
+        set local.reward_list append local.text
+    }
+
+    set local.uuid of save.fix_rewards to local.reward_list
+    playerAction.sendMessage "&aSuccesfully saved the fix"
+    playerAction.playSound sound.bell
+}
+
+function Command_Ban
+{
+    set local.player get 1 in local.args
+
+    if local.player = 0
+    {
+        playerAction.sendMessage "&cThis command requires a player and a ban period in hours as arguments!"
+        playerAction.playSound sound.strider_hurt
+        control.return
+    }
+
+    set local.time get 2 in local.args
+
+    if local.player matches value.name value.uuid
+    {
+        playerAction.sendMessage "&cYou can't ban yourself! &dAsk another moderator if you really want to do that..."
+        playerAction.playSound sound.strider_hurt
+        control.return
+    }
+
+    if local.time matches "perm" "perma" "permanent" "infinite" "infinity" "forever"
+    {
+        set local.time to -1
+    }
+
+    set local.time parseNumber
+
+    if local.time = 0
+    {
+        playerAction.sendMessage "&cThe given time was either not a number or 0"
+        playerAction.playSound sound.strider_hurt
+        control.return
+    }
+
+    if local.time != -1
+    {
+        set local.time multiply local.time 3600
+        set local.time increment value.timestamp
+    }
+
+    select.playerName local.player
+
+    if value.selection_size = 0
+    {
+        repeat for local.uuid local.name from save.uuid_player
+        {
+            if local.name = local.player
+            {
+                set local.uuid of save.blacklist to local.time
+                (default) playerAction.sendMessage "&aSuccesfully banned" local.player
+                (default) playerAction.playSound sound.bell
+                control.return
+            }
+
+            (default) playerAction.sendMessage "&cThe given player is not playing on the plot!"
+            (default) playerAction.playSound sound.strider_hurt
+            control.return
+        } 
+    }
+
+    set local.uuid of save.blacklist to local.time
+    playerAction.kick
+    (default) playerAction.sendMessage "&aSuccesfully banned" local.player
+    (default) playerAction.playSound sound.bell
+}
+
+function Command_Pardon
+{
+    set local.player get 1 in local.args
+
+    if local.player = 0
+    {
+        set local.size size save.blacklist
+
+        if local.size = 0
+        {
+            playerAction.sendMessage "&cThere are no banned players on this plot"
+            playerAction.playSound sound.bell
+            control.return
+        }
+
+        repeat for local.uuid local.time from save.blacklist
+        {
+            set local.name get local.uuid of save.uuid_player
+            playerAction.sendMessage "&d" local.uuid "&r - &b" local.name "&r - &c" local.time
+        }
+
+        playerAction.playSound sound.bell
+        control.return
+    }
+
+    set local.time get local.player of save.blacklist
+
+    if local.time != 0
+    {
+        set save.blacklist removeEntry local.player
+        playerAction.sendMessage "&aSuccesfully pardoned" local.player
+        playerAction.playSound sound.bell
+        control.return
+    }
+
+    repeat for local.uuid local.time from save.blacklist
+    {
+        set local.name get local.uuid of save.uuid_player
+
+        if local.player = local.name
+        {
+            set save.blacklist removeEntry local.uuid
+            playerAction.sendMessage "&aSuccesfully pardoned"
+            playerAction.playSound sound.bell
+            control.return
+        }
+    }
+
+    playerAction.sendMessage "&cThis player is not banned"
+    playerAction.playSound sound.strider_hurt
+}

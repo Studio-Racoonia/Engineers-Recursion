@@ -1,0 +1,267 @@
+function SG_Generation
+{
+    set game.generation_radius to 150
+    set game.generation_wall_height 70
+    set game.generation_wall_pitch 0.25
+    set game.generation_valley_radius 110
+    set game.generation_ground_level 80
+    set game.generation_perlin_strength 50
+    set game.generation_perlin_scale 0.2
+    set game.generation_perlin_layers 4
+    set game.generation_quarter_ids list "the_cave" "crash_site" "alien_camp" "player_base"
+    set game.block_count to 90000
+    set game.generation_planet_animation list location location ...
+    set game.generation_planet_animation_pos to location{61.5, 19.5, 265.5}
+    set game.generation_deco_numPoints to 800
+    set game.generation_deco_small_structures list location location ...
+    set game.generation_deco_nature list item.crimson_roots item.crimson_roots item.crimson_roots item.warped_roots item.nether_sprouts
+}
+
+function Generation_Clear
+{
+    set save.generation_done to 0
+    (allPlayers) playerAction teleport location
+    set local.blocks_done to 0
+    set local.generation_phase to -1
+    set local.max to local.block_count
+    
+    repeat for local.location grid location{0.5, 80, 0.8} location{300.5, 80, 300.5}
+    {
+        set local.blocks_done increment
+        set local.i increment
+        
+        if local.i > 70
+        {
+            control.wait
+            set local.i to 0
+        }
+
+        set local.distance distance type=2d local.location location{150.5, 0, 150.5}
+
+        if local.distance > game.generation_radius
+        {
+            control.skip
+        }
+
+        set local.location_1 setCoord y 200
+        gameAction.setRegion item.air local.location local.location_1
+        call Generation_Anime
+    }
+}
+
+function Generation
+{
+    set local.blocks_done to 0
+    set local.generation_phase 1
+    set local.max to game.block_count
+
+    repeat for local.location grid location{0.5, 80, 0.8} location{300.5, 80, 300.5}
+    {
+        set local.math_location to local.location
+        set local.blocks_done increment
+
+        if local.i > 70
+        {
+            control.wait
+            set local.i to 0
+        }
+
+        set local.i increment
+        call Generation_Math
+        set local.location_1 to local.location
+        set local.block to item.orange_terracotta
+        set local.min_y to 255
+
+        repeat for local.location adjacent local.math_location pattern=cardinal
+        {
+            call Generation_Math
+
+            if local.height < local.min_y
+            {
+                set local.min_y to local.height
+            }
+        }
+
+        set local.min_y increment
+        set local.y getCoord y local.location_1
+
+        if local.min_y < local.y
+        {
+            set local.location_2 setCoord local.location_1 y local.min_y
+            gameAction setRegion local.block local.location_1 local.location_2 
+        }
+        else
+        {
+            gameAction setBlock local.block local.location_1
+        }
+
+        call Generation_Anime
+        set local.y getCoord y local.location 
+
+        if local.y < game.generation_ground_level
+        {
+            control.skip
+        }
+
+        set local.random random 0 100 mode=decimal
+
+        if local.random > 1
+        {
+            control.skip
+        }
+
+        set local.location shiftOnAxis y 1
+        set local.length length game.generation_deco_nature
+        set local.index random 1 local.length
+        set local.block get local.index in game.generation_deco_nature
+        gameAction setBlock local.block local.location
+    }
+}
+
+function Generation_Math
+{
+    set local.perlin_value perlinNoise local.location game.generation_perlin_scale game.generation_perlin_layers 1.5 0.75 game.generation_seed
+    set local.perlin_value multiply local.perlin_value game.generation_perlin_strength
+    set local.distance distance local.location location{150.5, 0, 150.5}
+
+    if local.distance > game.generation_radius
+    {
+        control.skip
+    }
+
+    set local.height substract local.distance game.generation_valley_radius
+    set local.height local.height game.generation_wall_pitch
+    set local.height multiply local.height -1
+    set local.height exponent game.math_euler_number local.height
+    set local.height increment
+    set local.height divide game.generation_wall_height local.height
+    set local.height increment game.generation_ground_level
+    set local.height increment local.perlin_value
+    set local.location shiftOnAxis y local.height
+}
+
+function Generation_Anime
+{
+    if local.max = -1
+    {
+        playerAction.removeBossBar
+        set save.generation_done to 1
+        control.return
+    }
+
+    set local.progress_float divide local.blocks_done local.max
+    set local.generation_progress multiply local.progress_float 100
+    set local.generation_progress round mode=floor
+
+    repeat multiple 1
+    {
+        if generation_phase = -1
+        {
+            (allPlayers) playerAction.setBossBar "Clearing Generation" local.generation_progress color=red
+            control.skip
+        }
+        if generation_phase = 1
+        {
+            (allPlayers) playerAction.setBossBar "Generating Ground" local.generation_progress color=yellow
+            control.skip
+        }
+        if generation_phase = 2
+        {
+            (allPlayers) playerAction.setBossBar "Generating Structures" local.generation_progress color=green
+            control.skip
+        }
+    }
+
+    if local.generation_phase != -1 1
+    {
+        control.return
+    }
+
+    set local.length length game.generation_planet_animation
+    set local.index multiply local.length local.progress_float
+    set local.index round mode=floor
+
+    if local.index = game.generation_anime_last_index
+    {
+        control.return
+    }
+
+    set game.generation_anime_last_index to local.index
+
+    if local.generation_phase -1
+    {
+        set local.index substract local.length local.index
+    }
+    else
+    {
+        set local.index increment
+    }
+
+    set local.template_pos get local.index in game.generation_planet_animation
+    set local.animation_template_pos get 1 in game.generation_planet_animation
+
+    if local.generation_phase = 1
+    {
+        gameAction.cloneRegion local.template_pos local.template_pos local.template_pos game.generation_planet_animation_pos entities=false
+        control.return
+    }
+
+    set local.move_vector vectorBetween local.animation_template_pos game.generation_planet_animation_pos
+    set local.animation_pos shiftOnVector local.template_pos local.move_vector
+    gameAction.setBlock item.air local.animation_pos
+}
+
+process Generate
+{
+    set game.generation_seed random 10 10000
+    call Generation_Clear
+    call Generation
+    call Generation_Deko
+    set local.max -1
+    call Generation_Anime
+}
+
+function Generation_Deko
+{
+    set local.generation_quarters randomizeList game.generation_quarter_ids
+    set local.generation_phase to 2
+    set local.max to game.generation_deco_numPoints
+    
+    repeat for local.i multiple game.generation_deco_numPoints
+    {
+        set local.random random 0 100 mode=decimal
+
+        if local.random > 10
+        {
+            control.skip
+        }
+
+        set local.dst substract game.generation_deco_numPoints 1
+        set local.dst divide local.i local.dst
+        set local.dst exponent local.dst 0.5
+        set local.valley multiply game.generation_valley_radius 0.85
+        set local.dst multiply local.dst local.valley
+        set local.angle multiply 2 game.math_pi game.math_phi local.i
+        set local.x cosine local.angle
+        set local.x multiply local.x local.dst
+        set local.z sinus local.angle
+        set local.z multiply local.z local.dst
+        set local.location setAllCoords local.x 0 local.z
+        set local.location shiftAllAxes local.location 150.5 0.5 150.5
+        set local.distance distance local.location location{150.5, 0, 150.5} type=2d
+
+        if local.distance < 7
+        {
+            control.skip
+        }
+
+        call Generation_Math
+        set local.length length game.generation_deco_small_structures
+        set local.index random 1 local.length
+        set local.template_pos get local.index in game.generation_deco_small_structures
+        set local.corner1 shiftAllAxes local.template_pos -1 -2 -1
+        set local.corner2 shiftAllAxes local.template_pos 1 10 1
+        gameAction.cloneRegion ignoreAir=true entities=false local.corner1 local.corner2 local.template_pos local.location
+        call Generation_Anime
+    }
+}

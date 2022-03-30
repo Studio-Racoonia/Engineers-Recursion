@@ -1,0 +1,73 @@
+function Setup_Game
+{
+    set game.admins list text."9acacc5b-4a51-4db5-a61c-935d56a41270" text."bfa8b4ef-82a9-4200-a896-f27de38ac9f2"
+    call Setup_Math
+    call SG_Generation
+    call SG_Playerdata
+    call SG_Command
+    call Setup_Lobby
+}
+
+function Setup_Player
+{
+    set local.banned_player get value.uuid of save.blacklist
+
+    if local.banned_player != 0
+    {
+        if local.banned_player = -1
+        {
+            playerAction.kick
+            control.return
+        }
+
+        if local.banned_player > value.timestamp
+        {
+            playerAction.kick
+            control.return
+        }
+
+        set blacklist removeEntry value.uuid
+    }
+
+    set game.%uuid_dimension to text."LOBBY"
+
+    playerAction.spectator
+
+    if game.admins contains value.uuid
+    {
+        playerAction.chatTag text."&x&0&0&8&7&8&4[&x&d&4&2&2&1&5Admin&x&0&0&8&7&8&4] &r"
+        playerAction.nameColor text."&4"
+        playerAction.creative
+    }
+
+    if save.fix_rewards hasKey value.uuid
+    {
+        set local.reward_list get value.uuid from save.fix_rewards
+        set local.book bookText item.writable_book "Buch Text"
+        set local.length length local.reward_list
+
+        repeat for local.i multiple local.length
+        {
+            set local.reward get local.i in local.reward_list
+            set local.book bookText local.book local.reward number.{%math(%var(i)+1)}
+        }
+
+        playerAction.openBook local.book
+        set save.fix_rewards removeEntry value.uuid
+    }
+}
+
+function Setup_Math
+{
+    set game.math_euler_number to 2.7183
+    set game.math_phi root 5
+    set game.math_phi increment
+    set game.math_phi divide game.math_phi 2
+    set game.math_pi to 3.14159265359
+}
+
+function Setup_Lobby
+{
+    gameAction spawnArmorStand visibility=invisible_no_hitbox local.location left_hand=item.shield
+    entityAction armorStandPose part=right_arm 0 70 0
+}
